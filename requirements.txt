@@ -1,0 +1,11 @@
+# UI / orchestration layer (works without a GPU)
+gradio>=4.44,<7
+pyyaml>=6.0
+pandas>=2.0
+datasets>=2.20
+psutil>=5.9
+
+# Training stack (requires an NVIDIA GPU with CUDA).
+# Unsloth installs compatible versions of torch, transformers, trl, peft, bitsandbytes and accelerate.
+unsloth
+unsloth_zoo

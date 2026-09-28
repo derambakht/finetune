@@ -1,0 +1,38 @@
+# QLoRA fine-tune of Qwen3-4B-Instruct on Alpaca-cleaned (fits a 8-12 GB GPU)
+model:
+  model_name: unsloth/Qwen3-4B-Instruct-2507
+  max_seq_length: 2048
+  quantization: 4bit
+  dtype: auto
+  chat_template: qwen3-instruct
+dataset:
+  source: huggingface
+  path: yahma/alpaca-cleaned
+  split: train
+  format: alpaca
+  max_samples: 0
+  eval_ratio: 0.01
+lora:
+  r: 16
+  alpha: 16
+  dropout: 0.0
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  gradient_checkpointing: unsloth
+training:
+  run_name: qwen3-4b-alpaca
+  num_train_epochs: 1
+  max_steps: 0
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 0.0002
+  lr_scheduler_type: linear
+  warmup_ratio: 0.03
+  warmup_steps: 0
+  optim: adamw_8bit
+  train_on_responses_only: true
+  save_steps: 200
+  eval_steps: 200
+export:
+  export_after_training: true
+  methods: [lora, gguf]
+  gguf_quantizations: [q4_k_m]

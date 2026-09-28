@@ -1,0 +1,17 @@
+# Fine-tune on a local JSONL file in chat "messages" format (see data/sample_chat.jsonl)
+model:
+  model_name: unsloth/Qwen3-0.6B
+  max_seq_length: 1024
+  quantization: 4bit
+  chat_template: qwen3
+dataset:
+  source: local
+  path: data/sample_chat.jsonl
+  format: messages
+  system_prompt: "You are a helpful assistant."
+training:
+  run_name: smoke-test
+  max_steps: 20
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 1
+  save_steps: 1000

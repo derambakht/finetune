@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ftstudio"
+version = "1.0.0"
+description = "Unsloth FineTune Studio - a professional LLM fine-tuning toolkit with a web UI powered by Unsloth"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "gradio>=4.44,<7",
+    "pyyaml>=6.0",
+    "pandas>=2.0",
+    "datasets>=2.20",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+# The GPU stack. Unsloth pins compatible versions of torch / transformers / trl / peft itself.
+train = [
+    "unsloth",
+    "unsloth_zoo",
+]
+dev = [
+    "pytest>=7",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+ftstudio = "ftstudio.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"

@@ -1,0 +1,8 @@
+{"messages": [{"role": "user", "content": "What is the capital of France?"}, {"role": "assistant", "content": "The capital of France is Paris."}]}
+{"messages": [{"role": "user", "content": "پایتخت ایران کجاست؟"}, {"role": "assistant", "content": "پایتخت ایران تهران است."}]}
+{"messages": [{"role": "user", "content": "Write a haiku about the sea."}, {"role": "assistant", "content": "Waves fold into foam,\nsalt wind carries gull voices,\nthe tide keeps its time."}]}
+{"messages": [{"role": "user", "content": "Explain LoRA in one sentence."}, {"role": "assistant", "content": "LoRA fine-tunes a large model by training small low-rank matrices added to its frozen weights, cutting memory and compute dramatically."}]}
+{"messages": [{"role": "user", "content": "Convert 100 Celsius to Fahrenheit."}, {"role": "assistant", "content": "100 °C equals 212 °F (100 × 9/5 + 32)."}]}
+{"messages": [{"role": "system", "content": "You answer in Persian."}, {"role": "user", "content": "What is machine learning?"}, {"role": "assistant", "content": "یادگیری ماشین شاخه‌ای از هوش مصنوعی است که به رایانه‌ها امکان می‌دهد از داده‌ها الگو بیاموزند بدون اینکه صریحاً برنامه‌ریزی شوند."}]}
+{"messages": [{"role": "user", "content": "Give me a Python one-liner to reverse a string s."}, {"role": "assistant", "content": "s[::-1]"}]}
+{"messages": [{"role": "user", "content": "What does QLoRA stand for?"}, {"role": "assistant", "content": "QLoRA stands for Quantized Low-Rank Adaptation: LoRA training on top of a 4-bit quantized base model."}]}

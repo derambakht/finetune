@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+
+# Training outputs, caches and exported models
+outputs/
+unsloth_compiled_cache/
+*.gguf
+wandb/
+runs/
+.gradio/
+data/uploads/

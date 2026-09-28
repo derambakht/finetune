@@ -55,7 +55,9 @@ CSS = """
 .fts-progress-bar {height: 14px; background: var(--block-border-color, #e5e7eb); border-radius: 999px; overflow:hidden;}
 .fts-progress-fill {height: 100%; background: linear-gradient(90deg,#10b981,#6366f1); transition: width .6s ease;}
 .fts-progress-meta {display:flex; flex-wrap:wrap; gap: 18px; margin-top: 8px; font-size: .92rem;}
-.fts-log textarea {font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important; font-size: 12px !important;}
+.fts-log textarea {font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important; font-size: 12px !important;
+  unicode-bidi: plaintext;}
+.fts-bidi td, .fts-bidi textarea, .fts-bidi .prose {unicode-bidi: plaintext;}
 footer {display:none !important;}
 """
 
@@ -168,7 +170,11 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
                             [("🤗 Hugging Face Hub", "huggingface"), ("📁 Local file", "local")],
                             value=defaults.dataset.source, label="Source",
                         ))
-                        popular = gr.Dropdown(POPULAR_DATASETS, value=None, label="Popular datasets (quick fill)")
+                        with gr.Row():
+                            popular = gr.Dropdown(POPULAR_DATASETS, value=None,
+                                                  label="Popular Hub datasets (quick fill)")
+                            samples = gr.Dropdown(logic.sample_dataset_choices(), value=None,
+                                                  label="Bundled samples · نمونه‌داده‌های فارسی")
                         reg("dataset", "path", gr.Textbox(
                             value=defaults.dataset.path, label="Dataset id or file path",
                             info="e.g. yahma/alpaca-cleaned, or /data/train.jsonl (json, jsonl, csv, tsv, parquet, txt)",
@@ -197,6 +203,10 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
                             value="", lines=2, label="System prompt (optional)",
                             info="Prepended to every conversation that has no system message.",
                         ))
+                        reg("dataset", "normalize_persian", gr.Checkbox(
+                            value=False, label="Normalize Persian text · یکسان‌سازی متن فارسی",
+                            info="Arabic ي/ك → ی/ک, remove kashida, fix half-spaces (می‌روم). Recommended for Persian data.",
+                        ))
                         with gr.Row():
                             reg("dataset", "max_samples", gr.Number(value=0, precision=0,
                                                                     label="Max samples (0 = all)"))
@@ -219,7 +229,7 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
                             "template, so the fine-tuned model works out of the box in Ollama, vLLM, etc."
                         )
                 preview_info = gr.Markdown()
-                preview_df = gr.Dataframe(label="Raw rows", wrap=True, interactive=False)
+                preview_df = gr.Dataframe(label="Raw rows", wrap=True, interactive=False, elem_classes=["fts-bidi"])
                 preview_text = gr.Textbox(label="Formatted training text (what the model sees)", lines=16,
                                           elem_classes=["fts-log"])
 
@@ -363,14 +373,14 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
                 chat_status = gr.Markdown("No model loaded.")
                 with gr.Row():
                     with gr.Column(scale=3):
-                        chatbot = _chatbot(label="Chat", height=460)
+                        chatbot = _chatbot(label="Chat", height=460, elem_classes=["fts-bidi"])
                         with gr.Row():
-                            chat_input = gr.Textbox(placeholder="Type a message and press Enter…", scale=5,
-                                                    show_label=False)
+                            chat_input = gr.Textbox(placeholder="Type a message and press Enter… · پیام خود را بنویسید", scale=5,
+                                                    show_label=False, elem_classes=["fts-bidi"])
                             send_btn = gr.Button("Send", variant="primary", scale=1)
                         clear_btn = gr.Button("🧹 Clear chat")
                     with gr.Column(scale=1):
-                        chat_system = gr.Textbox(label="System prompt", lines=3)
+                        chat_system = gr.Textbox(label="System prompt", lines=3, elem_classes=["fts-bidi"])
                         max_new = gr.Slider(16, 4096, value=512, step=16, label="Max new tokens")
                         temperature = gr.Slider(0.0, 2.0, value=0.7, step=0.05, label="Temperature")
                         top_p = gr.Slider(0.05, 1.0, value=0.9, step=0.05, label="Top-p")
@@ -464,6 +474,17 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
 
         popular.change(on_popular, popular, [comps[("dataset", "source")], comps[("dataset", "path")],
                                              comps[("dataset", "split")], comps[("dataset", "subset")]])
+
+        def on_sample(choice):
+            if not choice:
+                return gr.update(), gr.update(), gr.update(), gr.update()
+            path, fmt = choice.rsplit("|", 1)
+            is_fa = "/persian/" in path.replace("\\", "/")
+            return (gr.update(value="local"), gr.update(value=path), gr.update(value=fmt),
+                    gr.update(value=True) if is_fa else gr.update())
+
+        samples.change(on_sample, samples, [comps[("dataset", "source")], comps[("dataset", "path")],
+                                            comps[("dataset", "format")], comps[("dataset", "normalize_persian")]])
 
         def on_upload(file_path):
             if not file_path:

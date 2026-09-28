@@ -126,6 +126,7 @@ class DatasetConfig:
     system_column: str = ""
     text_column: str = "text"
     system_prompt: str = ""
+    normalize_persian: bool = False  # unify Arabic ي/ك, kashida, ZWNJ spacing
     max_samples: int = 0  # 0 = use all
     shuffle: bool = True
     eval_split: str = ""  # name of an existing eval split (takes precedence)

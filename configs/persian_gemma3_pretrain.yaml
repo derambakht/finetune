@@ -1,0 +1,32 @@
+# پیش‌آموزش ادامه‌دار (continued pre-training) روی متن خام فارسی
+# Continued pre-training on raw Persian text to improve the model's Persian fluency.
+#   ftstudio train --config configs/persian_gemma3_pretrain.yaml
+# Gemma is gated on Hugging Face: set HF_TOKEN or paste your token in the UI.
+model:
+  model_name: unsloth/gemma-3-4b-it
+  max_seq_length: 2048
+  quantization: 4bit
+  chat_template: gemma-3
+dataset:
+  source: local
+  path: data/persian/fa_corpus.jsonl
+  format: text
+  text_column: text
+  normalize_persian: true
+lora:
+  r: 64
+  alpha: 64
+  use_rslora: true
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj, embed_tokens, lm_head]
+training:
+  run_name: persian-cpt
+  num_train_epochs: 2
+  max_steps: 0
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 0.00005
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.05
+  warmup_steps: 0
+  packing: true
+  train_on_responses_only: false

@@ -9,6 +9,7 @@ Raw text datasets (continued pre-training) bypass the chat template.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,38 @@ _LOCAL_LOADERS = {
     ".arrow": "arrow",
 }
 
-PROMPT_COLUMN_CANDIDATES = ["prompt", "question", "query", "input", "instruction", "user"]
+ZWNJ = "‌"
+
+_PERSIAN_CHAR_MAP = str.maketrans({
+    "ي": "ی",  # Arabic yeh ي -> Persian yeh ی
+    "ى": "ی",  # Arabic alef maksura ى -> ی
+    "ك": "ک",  # Arabic kaf ك -> Persian kaf ک
+    "ـ": None,  # tatweel / kashida ـ
+    "‏": None,  # right-to-left mark
+    "‎": None,  # left-to-right mark
+    "﻿": None,  # BOM
+})
+
+
+def normalize_persian(text: str) -> str:
+    """Light, meaning-preserving normalisation of Persian text.
+
+    * Arabic ``ي``/``ك`` → Persian ``ی``/``ک``; kashida and direction marks removed
+    * spaces around a half-space (ZWNJ) removed and repeated ZWNJs collapsed
+    * ``می``/``نمی`` prefix joined with a ZWNJ when written with a space (``می روم`` → ``می‌روم``)
+    * repeated spaces between two Persian characters collapsed (code indentation and
+      alignment elsewhere are left untouched)
+    """
+    if not text:
+        return text
+    text = text.translate(_PERSIAN_CHAR_MAP)
+    text = re.sub(f" *{ZWNJ}+ *", ZWNJ, text)
+    text = re.sub(r"(^|[\s‌])(ن?می) (?=[؀-ۿ])", lambda m: f"{m.group(1)}{m.group(2)}{ZWNJ}", text)
+    text = re.sub(r"(?<=[؀-ۿ])[ \t]{2,}(?=[؀-ۿ])", " ", text)
+    return text
+
+
+PROMPT_COLUMN_CANDIDATES =["prompt", "question", "query", "input", "instruction", "user"]
 RESPONSE_COLUMN_CANDIDATES = ["completion", "response", "answer", "output", "chosen", "assistant"]
 
 
@@ -108,8 +140,10 @@ def _as_str(value: Any) -> str:
         return ""
     if isinstance(value, str):
         return value
-    if isinstance(value, (list, dict)):
-        return json.dumps(value, ensure_ascii=False)
+    if hasattr(value, "tolist"):  # numpy arrays coming from Dataset.to_pandas()
+        value = value.tolist()
+    if isinstance(value, (list, dict, tuple)):
+        return json.dumps(value, ensure_ascii=False, default=str)
     return str(value)
 
 
@@ -135,6 +169,7 @@ def row_to_messages(
     fmt: str,
     columns: dict[str, str | None] | None = None,
     system_prompt: str = "",
+    normalize: bool = False,
 ) -> list[dict[str, str]] | None:
     """Convert a single dataset row to chat messages. Returns ``None`` for unusable rows."""
     columns = columns or {}
@@ -172,6 +207,9 @@ def row_to_messages(
 
     if system_prompt.strip() and not (messages and messages[0]["role"] == "system"):
         messages.insert(0, {"role": "system", "content": system_prompt.strip()})
+
+    if normalize:
+        messages = [{"role": m["role"], "content": normalize_persian(m["content"])} for m in messages]
 
     if not any(m["role"] == "assistant" and m["content"].strip() for m in messages):
         return None
@@ -306,6 +344,8 @@ def convert_dataset(ds, cfg: DatasetConfig, fmt: str, tokenizer: Any, template: 
             out = []
             for t in batch[text_col]:
                 t = _as_str(t)
+                if cfg.normalize_persian:
+                    t = normalize_persian(t)
                 out.append(t if (not eos or t.endswith(eos)) else t + eos)
             return {TEXT_FIELD: out}
 
@@ -323,7 +363,7 @@ def convert_dataset(ds, cfg: DatasetConfig, fmt: str, tokenizer: Any, template: 
             texts = []
             for i in range(n):
                 row = {k: batch[k][i] for k in keys}
-                messages = row_to_messages(row, fmt, columns, cfg.system_prompt)
+                messages = row_to_messages(row, fmt, columns, cfg.system_prompt, cfg.normalize_persian)
                 texts.append(render_messages(messages, tokenizer, template) if messages else "")
             return {TEXT_FIELD: texts}
 
@@ -357,8 +397,10 @@ def preview_dataset(cfg: DatasetConfig, tokenizer: Any = None, template: str = "
     for row in head:
         if fmt == "text":
             text = _as_str(row.get(columns.get("text") or "", ""))
+            if cfg.normalize_persian:
+                text = normalize_persian(text)
         else:
-            messages = row_to_messages(row, fmt, columns, cfg.system_prompt)
+            messages = row_to_messages(row, fmt, columns, cfg.system_prompt, cfg.normalize_persian)
             if not messages:
                 rendered.append("⚠️ Row skipped: no user/assistant content could be extracted.")
                 continue

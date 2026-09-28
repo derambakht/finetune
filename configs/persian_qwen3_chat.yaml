@@ -1,0 +1,37 @@
+# فاین‌تیون یک دستیار فارسی‌زبان روی نمونه‌داده‌ی گفتگوی فارسی (QLoRA 4-bit، مناسب GPU با ۸ تا ۱۲ گیگ حافظه)
+# Persian assistant fine-tune on the bundled Persian chat sample.
+#   ftstudio train --config configs/persian_qwen3_chat.yaml
+# Qwen3 and Gemma 3 have strong multilingual (incl. Persian) tokenizers and are good starting points.
+model:
+  model_name: unsloth/Qwen3-4B-Instruct-2507
+  max_seq_length: 2048
+  quantization: 4bit
+  chat_template: qwen3-instruct
+dataset:
+  source: local
+  path: data/persian/fa_chat_messages.jsonl
+  format: messages
+  normalize_persian: true
+  system_prompt: "تو یک دستیار هوشمند فارسی‌زبان هستی که پاسخ‌های دقیق، مؤدبانه و روان می‌دهی."
+  eval_ratio: 0.1
+lora:
+  r: 16
+  alpha: 32
+training:
+  run_name: persian-assistant
+  # The sample is tiny (30 dialogues): a few epochs are enough to see the effect.
+  # Replace it with thousands of examples for a real assistant.
+  num_train_epochs: 3
+  max_steps: 0
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 2
+  learning_rate: 0.0002
+  warmup_steps: 3
+  train_on_responses_only: true
+  logging_steps: 1
+  eval_steps: 5
+  save_steps: 1000
+export:
+  export_after_training: false
+  methods: [lora, gguf]
+  gguf_quantizations: [q4_k_m]

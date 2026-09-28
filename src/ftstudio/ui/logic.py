@@ -34,6 +34,7 @@ FIELDS: list[tuple[str, str]] = [
     ("dataset", "system_column"),
     ("dataset", "text_column"),
     ("dataset", "system_prompt"),
+    ("dataset", "normalize_persian"),
     ("dataset", "max_samples"),
     ("dataset", "shuffle"),
     ("dataset", "eval_split"),
@@ -148,6 +149,14 @@ PRESETS: dict[str, dict[str, dict[str, Any]]] = {
                      "gradient_accumulation_steps": 8, "lr_scheduler_type": "cosine", "warmup_ratio": 0.03,
                      "warmup_steps": 0},
     },
+    "🇮🇷 Persian chat (فارسی)": {
+        "model": {"model_name": "unsloth/Qwen3-4B-Instruct-2507", "chat_template": "qwen3-instruct",
+                  "quantization": "4bit"},
+        "dataset": {"normalize_persian": True,
+                    "system_prompt": "تو یک دستیار هوشمند فارسی‌زبان هستی که پاسخ‌های دقیق، مؤدبانه و روان می‌دهی."},
+        "training": {"train_on_responses_only": True, "learning_rate": 2e-4},
+        "lora": {"r": 16, "alpha": 32},
+    },
     "📖 Continued pre-training (raw text)": {
         "dataset": {"format": "text"},
         "training": {"train_on_responses_only": False, "packing": True, "learning_rate": 5e-5},
@@ -156,6 +165,29 @@ PRESETS: dict[str, dict[str, dict[str, Any]]] = {
                                     "down_proj", "embed_tokens", "lm_head"]},
     },
 }
+
+
+SAMPLE_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+
+# (label, relative path under data/, format) — bundled example datasets
+SAMPLE_DATASETS: list[tuple[str, str, str]] = [
+    ("🇮🇷 فارسی · گفتگو (messages) · 30", "persian/fa_chat_messages.jsonl", "messages"),
+    ("🇮🇷 فارسی · دستورالعمل (Alpaca) · 15", "persian/fa_alpaca.jsonl", "alpaca"),
+    ("🇮🇷 فارسی · گفتگوی چندمرحله‌ای (ShareGPT) · 6", "persian/fa_sharegpt.jsonl", "sharegpt"),
+    ("🇮🇷 فارسی · پرسش و پاسخ (CSV) · 12", "persian/fa_qa.csv", "prompt_completion"),
+    ("🇮🇷 فارسی · متن خام برای پیش‌آموزش (text) · 8", "persian/fa_corpus.jsonl", "text"),
+    ("🌐 Mixed EN/FA chat (messages) · 8", "sample_chat.jsonl", "messages"),
+]
+
+
+def sample_dataset_choices() -> list[tuple[str, str]]:
+    """Dropdown choices for bundled samples that exist on disk (value = 'abs_path|format')."""
+    out = []
+    for label, rel, fmt in SAMPLE_DATASETS:
+        path = SAMPLE_DATA_DIR / rel
+        if path.exists():
+            out.append((label, f"{path}|{fmt}"))
+    return out
 
 
 def apply_preset(cfg: FinetuneConfig, preset: str) -> FinetuneConfig:

@@ -1,0 +1,35 @@
+# UI-only deployment (no GPU): configure runs, preview datasets, browse results / logs.
+# Training requires docker-compose.yml on a GPU server.
+#
+#   docker compose -f docker-compose.cpu.yml up -d --build
+
+name: ftstudio-cpu
+
+services:
+  studio:
+    build:
+      context: .
+      target: cpu
+    image: ${FTSTUDIO_CPU_IMAGE:-ftstudio:cpu}
+    container_name: ftstudio-cpu
+    restart: unless-stopped
+    init: true   # reaps training subprocesses and forwards signals
+    ports:
+      - "${FTSTUDIO_BIND:-0.0.0.0}:${FTSTUDIO_PORT:-7860}:7860"
+    environment:
+      FTSTUDIO_AUTH: ${FTSTUDIO_AUTH:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      GRADIO_ROOT_PATH: ${GRADIO_ROOT_PATH:-}
+    volumes:
+      - ${OUTPUTS_DIR:-./outputs}:/app/outputs
+      - ${DATA_DIR:-./data}:/app/data
+      - ${CONFIGS_DIR:-./configs}:/app/configs
+      - hf-cache:/cache/huggingface
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  hf-cache:

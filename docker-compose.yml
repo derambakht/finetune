@@ -1,0 +1,59 @@
+# Unsloth FineTune Studio on a GPU server
+#
+#   cp .env.example .env        # set FTSTUDIO_AUTH (login), HF_TOKEN, port ...
+#   docker compose up -d --build
+#   docker compose logs -f
+#   open http://<server-ip>:7860
+#
+# Requirements: NVIDIA driver + NVIDIA Container Toolkit on the host.
+# Without a GPU use:  docker compose -f docker-compose.cpu.yml up -d --build
+
+name: ftstudio
+
+services:
+  studio:
+    build:
+      context: .
+      target: gpu
+      args:
+        CUDA_IMAGE: ${CUDA_IMAGE:-nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04}
+        UNSLOTH_SPEC: ${UNSLOTH_SPEC:-unsloth unsloth_zoo}
+    image: ${FTSTUDIO_IMAGE:-ftstudio:gpu}
+    container_name: ftstudio
+    restart: unless-stopped
+    init: true   # reaps training subprocesses and forwards signals
+    ports:
+      - "${FTSTUDIO_BIND:-0.0.0.0}:${FTSTUDIO_PORT:-7860}:7860"
+    environment:
+      FTSTUDIO_AUTH: ${FTSTUDIO_AUTH:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+      GRADIO_ROOT_PATH: ${GRADIO_ROOT_PATH:-}
+      # Which GPU trains (Unsloth fine-tunes on one GPU): 0, 1, ...
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ${OUTPUTS_DIR:-./outputs}:/app/outputs   # runs, checkpoints, exported models
+      - ${DATA_DIR:-./data}:/app/data            # your datasets (+ bundled samples)
+      - ${CONFIGS_DIR:-./configs}:/app/configs   # YAML configs for headless runs
+      - hf-cache:/cache/huggingface              # downloaded models & datasets (survives rebuilds)
+    # PyTorch dataloaders and NCCL need a large shared memory segment
+    shm_size: ${SHM_SIZE:-16gb}
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+volumes:
+  hf-cache:

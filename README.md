@@ -57,7 +57,62 @@ pip install -e ".[dev]"
 
 ---
 
-## 🚀 اجرا / Quick start
+## 🐳 اجرا با Docker Compose روی سرور / Docker deployment
+
+<div dir="rtl">
+
+ساده‌ترین راه اجرا روی هر سرور لینوکسی دارای GPU انویدیا. کل برنامه در یک کانتینر اجرا می‌شود و فقط به Docker و درایور انویدیا نیاز است.
+
+**پیش‌نیازهای سرور (یک‌بار):**
+1. درایور انویدیا (با `nvidia-smi` بررسی کنید)
+2. [Docker Engine](https://docs.docker.com/engine/install/) به‌همراه Compose v2
+3. [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) و سپس `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`
+
+**اجرا:**
+
+</div>
+
+```bash
+git clone -b claude/charming-wozniak-wrp96r https://github.com/derambakht/finetune.git
+cd finetune
+cp .env.example .env          # set FTSTUDIO_AUTH (login!), HF_TOKEN, port ...
+nano .env
+
+docker compose up -d --build  # or: make up
+docker compose logs -f        # or: make logs
+# open http://<server-ip>:7860 and log in with FTSTUDIO_AUTH
+```
+
+<div dir="rtl">
+
+| دستور | کاربرد |
+|---|---|
+| `make up` / `docker compose up -d --build` | ساخت ایمیج GPU و اجرای استودیو |
+| `make gpu-check` | بررسی اینکه کانتینر GPU را می‌بیند |
+| `make train CONFIG=configs/persian_qwen3_chat.yaml` | آموزش بدون UI در یک کانتینر موقت |
+| `make logs` · `make ps` · `make shell` | لاگ، وضعیت، ورود به کانتینر |
+| `make down` | توقف (داده‌ها حفظ می‌شوند) |
+| `make up-cpu` / `docker compose -f docker-compose.cpu.yml up -d --build` | نسخه‌ی سبک بدون GPU: فقط UI برای ساخت کانفیگ، پیش‌نمایش دیتاست و مشاهده‌ی نتایج |
+
+**داده‌ها و ماندگاری:** خروجی‌ها و مدل‌ها در `./outputs`، دیتاست‌ها در `./data` و کانفیگ‌ها در `./configs` روی خود سرور ذخیره می‌شوند. مدل‌ها و دیتاست‌های دانلودشده از Hugging Face هم در volume به نام `hf-cache` نگه داشته می‌شوند تا با ساخت دوباره‌ی ایمیج از دست نروند. دیتاست‌های خود را کافی است در `./data` کپی کنید و در UI مسیر `/app/data/<file>` را بدهید.
+
+**تنظیمات مهم در `.env`:**
+- `FTSTUDIO_AUTH`: نام کاربری و رمز ورود به UI (مثلاً `admin:pass` یا چند کاربر با کاما). روی سرور عمومی حتماً تنظیم کنید.
+- `FTSTUDIO_PORT` و `FTSTUDIO_BIND`: پورت و آدرس. با `127.0.0.1` سرویس فقط از طریق SSH tunnel یا reverse proxy در دسترس است.
+- `CUDA_VISIBLE_DEVICES`: شماره‌ی GPU مورد استفاده. Unsloth روی یک GPU آموزش می‌دهد.
+- `HF_TOKEN`: برای مدل‌های gated و push به Hub.
+- `CUDA_IMAGE` و `UNSLOTH_SPEC`: نسخه‌ی CUDA پایه (باید با درایور سرور سازگار باشد) و پین کردن نسخه‌ی Unsloth برای ایمیج قابل‌تکرار.
+- `GRADIO_ROOT_PATH`: وقتی پشت reverse proxy و زیر یک مسیر (مثلاً `/ftstudio`) سرو می‌شود.
+
+**امنیت:** بدون `FTSTUDIO_AUTH` هر کسی که به پورت دسترسی دارد می‌تواند روی GPU شما آموزش اجرا کند. برای HTTPS، سرویس را پشت Nginx/Caddy قرار دهید یا `FTSTUDIO_BIND=127.0.0.1` بگذارید و با `ssh -L 7860:localhost:7860 user@server` وصل شوید.
+
+> اولین build ایمیج GPU چند گیگابایت دانلود می‌کند (CUDA، PyTorch و Unsloth) و ممکن است ۱۰ تا ۲۰ دقیقه طول بکشد. اولین خروجی GGUF هم llama.cpp را داخل کانتینر build می‌کند.
+
+</div>
+
+---
+
+## 🚀 اجرا بدون Docker / Quick start (local)
 
 ```bash
 python app.py                 # or: ftstudio ui
@@ -217,6 +272,10 @@ src/ftstudio/
     ├── app.py             # Gradio Blocks interface
     └── logic.py           # UI logic (field registry, presets, plots, runs table)
 tests/                     # unit tests (no GPU required)
+Dockerfile                 # targets: gpu (training) · cpu (UI only)
+docker-compose.yml         # GPU server deployment
+docker-compose.cpu.yml     # UI-only deployment
+.env.example · Makefile    # deployment settings & shortcuts
 configs/                   # example YAML configurations (incl. Persian)
 data/persian/              # Persian sample datasets in every supported format
 ```

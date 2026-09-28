@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib.util
+import os
 import shutil
 import tempfile
 import traceback
@@ -551,6 +553,11 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
             res = validate_config(cfg)
             if not res.ok:
                 return res.to_markdown()
+            if importlib.util.find_spec("unsloth") is None:
+                return (res.to_markdown() + "\n\n❌ **The training stack (Unsloth) is not installed in this "
+                        "environment.** This is the UI-only / CPU image. Run training on a GPU server with "
+                        "`docker compose up -d` (GPU image) or `pip install unsloth unsloth_zoo`. "
+                        "You can still save this configuration from the **📝 Config** tab.")
             try:
                 job = manager.start_training(cfg)
             except Exception as exc:  # noqa: BLE001
@@ -725,11 +732,30 @@ def build_app(output_root: str = "outputs") -> gr.Blocks:
     return app
 
 
-def launch(host: str = "0.0.0.0", port: int = 7860, share: bool = False, output_root: str = "outputs") -> None:
+def parse_auth(value: str | None) -> list[tuple[str, str]] | None:
+    """Parse ``"user:pass"`` or ``"user1:pass1,user2:pass2"`` into Gradio auth tuples."""
+    if not value or not value.strip():
+        return None
+    pairs = []
+    for item in value.split(","):
+        user, sep, password = item.strip().partition(":")
+        if not sep or not user or not password:
+            raise ValueError("Auth must look like 'user:password' (comma-separate multiple users).")
+        pairs.append((user, password))
+    return pairs
+
+
+def launch(host: str = "0.0.0.0", port: int = 7860, share: bool = False, output_root: str = "outputs",
+           auth: str | None = None) -> None:
+    """Start the web UI. ``auth`` defaults to the ``FTSTUDIO_AUTH`` environment variable."""
+    auth_pairs = parse_auth(auth if auth is not None else os.environ.get("FTSTUDIO_AUTH"))
     app = build_app(output_root=output_root)
     style = _style_kwargs() if GRADIO_6 else {}
-    app.queue(default_concurrency_limit=4).launch(server_name=host, server_port=port, share=share,
-                                                   show_error=True, **style)
+    app.queue(default_concurrency_limit=4).launch(
+        server_name=host, server_port=port, share=share, show_error=True,
+        auth=auth_pairs, auth_message="Unsloth FineTune Studio · ورود" if auth_pairs else None,
+        **style,
+    )
 
 
 if __name__ == "__main__":

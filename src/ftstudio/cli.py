@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -36,7 +37,7 @@ def _load_cfg(path: str | None) -> FinetuneConfig:
 def cmd_ui(args) -> int:
     from .ui.app import launch
 
-    launch(host=args.host, port=args.port, share=args.share, output_root=args.output_root)
+    launch(host=args.host, port=args.port, share=args.share, output_root=args.output_root, auth=args.auth)
     return 0
 
 
@@ -132,7 +133,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--host", default="0.0.0.0")
     s.add_argument("--port", type=int, default=7860)
     s.add_argument("--share", action="store_true", help="Create a public Gradio link (e.g. on Colab)")
-    s.add_argument("--output-root", default="outputs")
+    s.add_argument("--output-root", default=os.environ.get("FTSTUDIO_OUTPUT_ROOT", "outputs"))
+    s.add_argument("--auth", default=None, metavar="USER:PASS",
+                   help="Require login (comma-separate multiple users). Defaults to $FTSTUDIO_AUTH.")
     s.set_defaults(func=cmd_ui)
 
     s = sub.add_parser("init-config", help="Write a default YAML config")

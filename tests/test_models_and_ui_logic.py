@@ -89,3 +89,15 @@ def test_list_checkpoints_order(tmp_path):
     for name in ["checkpoint-10", "checkpoint-200", "final_model", "other"]:
         (tmp_path / name).mkdir()
     assert [p.name for p in list_checkpoints(tmp_path)] == ["final_model", "checkpoint-200", "checkpoint-10"]
+
+
+def test_parse_auth():
+    import pytest
+
+    from ftstudio.ui.app import parse_auth
+
+    assert parse_auth(None) is None and parse_auth("  ") is None
+    assert parse_auth("admin:s3cret") == [("admin", "s3cret")]
+    assert parse_auth("a:1, b:p:w") == [("a", "1"), ("b", "p:w")]
+    with pytest.raises(ValueError):
+        parse_auth("no-password")
